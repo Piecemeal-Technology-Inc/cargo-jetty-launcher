@@ -1,0 +1,272 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>jp.co.pmtech</groupId>
+  <artifactId>cargo-jetty-launcher</artifactId>
+  <packaging>pom</packaging>
+  <version>1.0.0</version>
+  <name>Running web application with Jetty using Cargo</name>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+
+    <jetty.version>9.4.7.v20170914</jetty.version>
+    <cargo.version>1.7.10</cargo.version>
+
+    <target.group>org.codehaus.cargo</target.group>
+    <target.artifact>datasource-war</target.artifact>
+    <target.version>1.7.11</target.version>
+
+    <context.path>change-context-root</context.path>
+    <jetty.port>8081</jetty.port>
+    <debug.port>9990</debug.port>
+    <cargo.rmi.port>8079</cargo.rmi.port>
+
+    <datasource.jndi>jdbc/CargoDS</datasource.jndi>
+    <jdbc.driver.class>org.h2.Driver</jdbc.driver.class>
+    <jdbc.url>jdbc:h2:mem:test;MODE=MYSQL;DB_CLOSE_DELAY=-1</jdbc.url>
+    <jdbc.user>sa</jdbc.user>
+    <jdbc.password></jdbc.password>
+
+
+    <jetty.base.name>${target.artifact}.${target.version}</jetty.base.name>
+    <jetty.base>${project.build.directory}/${jetty.base.name}</jetty.base>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-server</artifactId>
+      <version>${jetty.version}</version>
+    </dependency>
+
+    <!-- target web application -->
+    <dependency>
+      <groupId>${target.group}</groupId>
+      <artifactId>${target.artifact}</artifactId>
+      <version>${target.version}</version>
+      <type>war</type>
+    </dependency>
+    <dependency>
+      <groupId>${target.group}</groupId>
+      <artifactId>${target.artifact}</artifactId>
+      <version>${target.version}</version>
+      <type>java-source</type>
+    </dependency>
+   
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <!-- create JettyBase direcotry -->
+          <execution>
+            <id>copy-resources</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${jetty.base}</outputDirectory>
+              <includeEmptyDirs>true</includeEmptyDirs>
+              <resources>
+                <resource>
+                  <directory>src/main/template</directory>
+                  <filtering>false</filtering>
+                  <excludes>
+                    <exclude>*/.gitkeep</exclude>
+                  </excludes>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.1.2</version>
+        <executions>
+          <!-- Jetty server shared library copy from maven repo. -->
+          <execution>
+            <id>ext-lib-copy</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>copy</goal>
+            </goals>
+            <configuration>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>org.apache.commons</groupId>
+                  <artifactId>commons-dbcp2</artifactId>
+                  <version>2.1.1</version>
+                  <type>jar</type>
+                  <overWrite>true</overWrite>
+                  <outputDirectory>${project.build.directory}/extlib</outputDirectory>
+                  <destFileName>commons-dbcp2-2.1.1.jar</destFileName>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>org.apache.commons</groupId>
+                  <artifactId>commons-pool2</artifactId>
+                  <version>2.4.2</version>
+                  <type>jar</type>
+                  <overWrite>true</overWrite>
+                  <outputDirectory>${project.build.directory}/extlib</outputDirectory>
+                  <destFileName>commons-pool2-2.4.2.jar</destFileName>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>commons-logging</groupId>
+                  <artifactId>commons-logging</artifactId>
+                  <version>1.2</version>
+                  <type>jar</type>
+                  <overWrite>true</overWrite>
+                  <outputDirectory>${project.build.directory}/extlib</outputDirectory>
+                  <destFileName>commons-logging-1.2.jar</destFileName>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>com.h2database</groupId>
+                  <artifactId>h2</artifactId>
+                  <version>1.4.197</version>
+                  <type>jar</type>
+                  <overWrite>true</overWrite>
+                  <outputDirectory>${project.build.directory}/extlib</outputDirectory>
+                  <destFileName>h2-1.4.197.jar</destFileName>
+                </artifactItem>
+              </artifactItems>
+            </configuration>
+          </execution>
+          <execution>
+            <!-- download sources of target web application for debugging. -->
+            <id>src-unpack-target</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>unpack-dependencies</goal>
+            </goals>
+            <configuration>
+              <classifier>sources</classifier>
+              <includeArtifactIds>${target.artifact}</includeArtifactIds>
+              <failOnMissingClassifierArtifact>false</failOnMissingClassifierArtifact>
+              <outputDirectory>${project.build.directory}/sources-${jetty.base.name}/main</outputDirectory>
+            </configuration>
+          </execution>
+          <execution>
+            <!-- download target web application dependency library sources for debugging. -->
+            <id>src-unpack-dependencies</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>unpack-dependencies</goal>
+            </goals>
+            <configuration>
+              <classifier>sources</classifier>
+              <excludeArtifactIds>${target.artifact}</excludeArtifactIds>
+              <failOnMissingClassifierArtifact>false</failOnMissingClassifierArtifact>
+              <outputDirectory>${project.build.directory}/sources-${jetty.base.name}/dependency</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.cargo</groupId>
+        <artifactId>cargo-maven2-plugin</artifactId>
+        <version>${cargo.version}</version>
+        <configuration>
+          <container>
+            <containerId>jetty9x</containerId>
+            <artifactInstaller>
+              <groupId>org.eclipse.jetty</groupId>
+              <artifactId>jetty-distribution</artifactId>
+              <version>${jetty.version}</version>
+            </artifactInstaller>
+            <log>${project.build.directory}/cargo_${jetty.base.name}.log</log>
+            <logLevel>debug</logLevel>
+            <append>false</append>
+            <systemProperties>
+              <!-- used src/config/webapps/application.xml -->
+              <jetty.webapps.contextpath>${context.path}</jetty.webapps.contextpath>
+              <jetty.webapps.warname>${context.path}.war</jetty.webapps.warname>
+              
+              <!-- used src/config/etc/jetty-datasource.xml -->
+              <jetty.datasource.name></jetty.datasource.name>
+              <jetty.dbcp.driver>${jdbc.driver.class}</jetty.dbcp.driver>
+              <jetty.dbcp.url>${jdbc.url}</jetty.dbcp.url>
+              <jetty.dbcp.schema>${jdbc.user}</jetty.dbcp.schema>
+              <jetty.dbcp.password>${jdbc.password}</jetty.dbcp.password>
+            </systemProperties>
+          </container>
+          <configuration>
+            <type>existing</type>
+            <home>${jetty.base}</home>
+            <configfiles>
+              <configfile>
+                <file>src/main/config/start.d/database.ini</file>
+                <todir>start.d</todir>
+              </configfile>
+              <configfile>
+                <file>src/main/config/etc/jetty-datasource.xml</file>
+                <todir>etc</todir>
+              </configfile>
+              <configfile>
+                <file>src/main/config/webapps/application.xml</file>
+                <tofile>webapps/${context.path}.xml</tofile>
+              </configfile>
+            </configfiles>
+            <files>
+              <!-- execution:ext-lib-copy で取得したライブラリをJettyBaseの構成に加える. -->
+              <copy>
+                <file>${project.build.directory}/extlib/commons-dbcp2-2.1.1.jar</file>
+                <todir>lib/ext</todir>
+                <configfile>false</configfile>
+              </copy>
+              <copy>
+                <file>${project.build.directory}/extlib/commons-pool2-2.4.2.jar</file>
+                <todir>lib/ext</todir>
+                <configfile>false</configfile>
+              </copy>
+              <copy>
+                <file>${project.build.directory}/extlib/commons-logging-1.2.jar</file>
+                <todir>lib/ext</todir>
+                <configfile>false</configfile>
+              </copy>
+              <copy>
+                <file>${project.build.directory}/extlib/h2-1.4.197.jar</file>
+                <todir>lib/ext</todir>
+                <configfile>false</configfile>
+              </copy>
+            </files>
+            <properties>
+              <cargo.servlet.port>${jetty.port}</cargo.servlet.port>
+              <cargo.rmi.port>${cargo.rmi.port}</cargo.rmi.port>
+              <cargo.jetty.createContextXml>false</cargo.jetty.createContextXml>
+              <cargo.start.jvmargs>
+                -Xdebug
+                -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=${debug.port}
+                -Xnoagent
+                -Djava.compiler=NONE
+              </cargo.start.jvmargs>
+            </properties>
+          </configuration>
+          
+          <deployables>
+            <deployable>
+              <groupId>${target.group}</groupId>
+              <artifactId>${target.artifact}</artifactId>
+              <type>war</type>
+              <properties>
+                <context>${context.path}</context>
+              </properties>
+            </deployable>
+          </deployables>
+          <wait>false</wait>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

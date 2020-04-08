@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!DOCTYPE Configure PUBLIC "-//Jetty//Configure//EN" "http://www.eclipse.org/jetty/configure_9_3.dtd">
+<Configure id="Server" class="org.eclipse.jetty.server.Server">
+  <Call name="addBean">
+    <Arg>
+      <New id="jetty_datasource" class="org.eclipse.jetty.plus.jndi.Resource">
+        <Arg><SystemProperty name="jetty.datasource.name" default="jdbc/CargoDS"/></Arg>
+        <Arg>
+          <New class="org.apache.commons.dbcp2.BasicDataSource">
+            <Set name="driverClassName"><SystemProperty name="jetty.dbcp.driver" default="org.h2.Driver"/></Set>
+            <Set name="url"><SystemProperty name="jetty.dbcp.url" default="jdbc:h2:mem:test;MODE=MYSQL;DB_CLOSE_DELAY=-1"/></Set>
+            <Set name="username"><SystemProperty name="jetty.dbcp.schema" default="sa"/></Set>
+            <Set name="password"><SystemProperty name="jetty.dbcp.password" default=""/></Set>
+            <Set name="initialSize"><SystemProperty name="jetty.dbcp.pool.initial" default="1"/></Set>
+            <Set name="maxTotal"><SystemProperty name="jetty.dbcp.pool.maxtotal" default="150"/></Set>
+            <Set name="minIdle"><SystemProperty name="jetty.dbcp.pool.minidle" default="0"/></Set>
+            <Set name="maxWaitMillis"><SystemProperty name="jetty.dbcp.pool.wait" default="600000"/></Set>
+          </New>
+        </Arg>
+      </New>
+    </Arg>
+  </Call>
+</Configure>
+
