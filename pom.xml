@@ -14,7 +14,7 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
 
-    <jetty.version>9.4.27.v20200227</jetty.version>
+    <jetty.version>9.4.38.v20210224</jetty.version>
     <cargo.version>1.7.10</cargo.version>
 
     <target.group>org.codehaus.cargo</target.group>
